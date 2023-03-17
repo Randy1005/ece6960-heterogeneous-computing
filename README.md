@@ -10,11 +10,14 @@ ece6960-heterogeneous-computing assigments and materials
   + `cmake ..`
   + run `make` to build executable
   + executable named `main` will be inside the `ece6960-heterogeneous-computing/build/main/` folder
+
++ Modifications
+  + I implemented an individual task queue for each thread, and distributed tasks by letting the queues take turns inserting tasks 
   
-+ I included a example matrix multiplication in `ece6960-heterogeneous-computing/main/main.cpp`
++ I included an example matrix multiplication in `ece6960-heterogeneous-computing/main/main.cpp`
 + Some benchmarks are as follows (with 16 workers):
-  | matrix size | threadpool implementation runtime (us) | sequential implementation runtime (us) |
+  | matrix size | threadpool implementation runtime (us) | sequential implementation runtime (us) | speedup |
   | --- | --- | --- |
-  | 256x256x256 | 3819 | 15673 | 
-  | 512x512x512 | 50253 | 228273 |
-  | 1024x1024x1024 | 636527 | 1914514 |
+  | 256x256x256 | 3819 | 15673 | 4.1x |
+  | 512x512x512 | 50253 | 228273 | 4.5x | 
+  | 1024x1024x1024 | 636527 | 1914514 | 3x |
