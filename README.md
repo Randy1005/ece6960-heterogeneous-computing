@@ -30,3 +30,12 @@ ece6960-heterogeneous-computing assigments and materials
   + Compile `parallel-reduction.cpp` with `g++ parallel-reduction.cpp -lpthread -std=c++17`
   + executable usage: `./a.out [num-threads] [data-size]`, e.g. `./a.out 8 10000000`
 + The parallel guided reduction function is named `reduce_guided`
++ Some benchmarks are as follows (16 workers):
+| data size | parallel guided reduce runtime (ns) | seqential reduce runtime (ns) | speedup |
+| --- | --- | --- | --- |
+| 100000 | 382144 | 689356 | 1.8x |
+| 1000000 | 1042555 | 6940653 | 6.6x |
+| 10000000 | 8331411 | 72429036 | 8.7x|
+| 100000000 | 80238743 | 709533506 | 8.8x|
+
+
