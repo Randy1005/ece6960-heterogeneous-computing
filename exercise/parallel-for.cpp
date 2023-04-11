@@ -8,7 +8,6 @@
 #include <mutex>
 #include <condition_variable>
 #include <type_traits>
-#include <algorithm>
 
 template <typename T>
 struct MoC {
@@ -94,7 +93,7 @@ class Threadpool {
     }
     
     template <typename Input, typename F>
-    void for_each(Input beg, Input end, F func, size_t chunk_size = 1) {
+    void for_each_guided(Input beg, Input end, F func, size_t chunk_size = 1) {
 
       // the total number of elements in the range [beg, end)
       size_t N = std::distance(beg, end);
@@ -104,64 +103,46 @@ class Threadpool {
 
       for(size_t i=0; i<threads.size(); i++) {
         futures.emplace_back(insert([N, beg, end, func, chunk_size, &tokens](){
+          
+          // define a threshold where we switch to fine-grained
+          // scheduling
+          size_t v = 2*W*(chunk_size+1);
+          // p is the factor we multiply with the remaining iterations
+          // to get the new chunk size
+          float p =  1/(2*W);
+
+                          
           size_t curr_b = tokens.fetch_add(chunk_size, std::memory_order_relaxed);              
           while(curr_b < N) {
-            size_t curr_e = std::min(N, curr_b + chunk_size);
-            // apply func to the range specified by beg + [curr_b, curr_e)
-            std::for_each(beg + curr_b, beg + curr_e, func);
-            // get the next chunk
-            curr_b = tokens.fetch_add(chunk_size, std::memory_order_relaxed);              
-          }
-        }));
-      }
-      
-      // caller thread to wait for all W tasks finish (futures)
-      for(auto & fu : futures) {
-        fu.get();
-      }
-    }
-    
-    template <typename Input, typename F>
-    void for_each_guided(Input beg, Input end, F func, size_t chunk_size = 1) {
-      auto W = threads.size();
-      // the total number of elements in the range [beg, end)
-      size_t N = std::distance(beg, end);
-
-      std::vector<std::future<void>> futures;
-      std::atomic<size_t> takens {0};
-
-      for(size_t i=0; i<threads.size(); i++) {
-        futures.emplace_back(insert([W, N, beg, end, func, chunk_size, &takens](){
-
-          size_t v = 2*W*(chunk_size+1);  // threshold to perform fine-grained scheduling
-          float  p = 1.0/(2*W);
-          size_t curr_b = takens.load(std::memory_order_relaxed);
-          while(curr_b < N) {
+            // calculate the remaining iterations
             size_t R = N - curr_b;
-            // fine-grained scheduling
-            if(R <= v) {
-              while(1) {
-                curr_b = takens.fetch_add(chunk_size, std::memory_order_relaxed);
-                if(curr_b >= N) {
+
+            // do fine-grained scheduling
+            if (R < v) {
+              while (1) {
+                curr_b = tokens.fetch_add(chunk_size, std::memory_order_relaxed); 
+                if (curr_b >= N) {
+                  // finished with all iterations
                   return;
                 }
                 size_t curr_e = std::min(N, curr_b + chunk_size);
+                // apply func to the range specified by beg + [curr_b, curr_e)
                 std::for_each(beg + curr_b, beg + curr_e, func);
               }
             }
-            // coarse-grained scheduling
+            // do coarse-grained scheduling
             else {
-              size_t q = R * p;
-              if(q < chunk_size) {
-                q = chunk_size;
-              }
-              size_t curr_e = std::min(N, curr_b + q);
-              if(takens.compare_exchange_strong(curr_b, curr_e, std::memory_order_relaxed,
-                                                                std::memory_order_relaxed)) {
+              // calculate the chunk size
+              int q = R * p;
+              q = std::max(q, chunk_size);
+              if (tokens.compare_exchange_strong(curr_b, curr_e)) {
                 std::for_each(beg + curr_b, beg + curr_e, func);
-                curr_b = takens.load(std::memory_order_relaxed);
+                // update curr_b
+                curr_b = load(tokens, std::memory_order_relaxed);
               }
+            
             }
+          
           }
         }));
       }

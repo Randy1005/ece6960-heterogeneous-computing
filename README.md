@@ -21,3 +21,12 @@ ece6960-heterogeneous-computing assigments and materials
   | 256x256x256 | 3819 | 15673 | 4.1x |
   | 512x512x512 | 50253 | 228273 | 4.5x | 
   | 1024x1024x1024 | 636527 | 1914514 | 3x |
+
+
+## Programming Assignment 2 Instructions
++ Compile and Run:
+  + Clone the repo
+  + Change directory to PA2: `cd ece6960-heterogeneous-computing/assignments/PA2/`
+  + Compile `parallel-reduction.cpp` with `g++ parallel-reduction.cpp -lpthread -std=c++17`
+  + executable usage: `./a.out [num-threads] [data-size]`, e.g. `./a.out 8 10000000`
++ The parallel guided reduction function is named `reduce_guided`
